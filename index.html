@@ -14,11 +14,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#031322;fon
 #topBar{top:15px;left:15px;right:15px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 .hud-card{background:rgba(6,36,58,0.85);border:2px solid #e7b957;padding:8px 16px;border-radius:12px;font-size:clamp(14px,1.6vw,20px);box-shadow:0 4px 10px rgba(0,0,0,0.5);pointer-events:auto}
 #timeCard{color:#ffe66b;font-size:clamp(16px,2vw,24px)}
+#playerCard{color:#76ff03}
 
 .overlay{position:absolute;z-index:10;inset:0;display:flex;align-items:center;justify-content:center;background:#00182bd9;padding:14px;backdrop-filter:blur(5px)}
 .panel{width:min(520px,92%);padding:26px;border-radius:20px;text-align:center;background:linear-gradient(145deg,#17425a,#071d32);border:2px solid #e7b957;box-shadow:0 14px 40px #000c;max-height:90vh;overflow-y:auto}
 .panel h2{margin:0 0 10px;color:#ffda75;font-size:clamp(22px,2.5vw,30px)}
 .panel p{line-height:1.5;color:#e9f5fa;font-size:clamp(13px,1.4vw,16px);margin-bottom:15px}
+
+.input-box{width:100%;padding:14px;border-radius:12px;border:2px solid #e7b957;font-size:18px;text-align:center;margin:12px 0;background:#fff;color:#071d32;font-weight:bold;outline:none}
+.input-box:focus{border-color:#ffe56b;box-shadow:0 0 10px #ffe56b88}
 
 .q-text-bm{color:#ffe89c;font-weight:bold;margin-bottom:6px;font-size:clamp(15px,1.6vw,19px)}
 .q-text-en{color:#b3e5fc;font-style:italic;margin-bottom:15px;font-size:clamp(13px,1.4vw,16px)}
@@ -38,6 +42,16 @@ button.action:active{transform:translateY(2px);box-shadow:0 2px 0 #98530c}
 .correct{color:#69f0ae}
 .wrong{color:#ff5252}
 
+/* Ranking Leaderboard Table */
+.leaderboard-table{width:100%;margin-top:15px;border-collapse:collapse;background:rgba(3,21,35,0.7);border-radius:10px;overflow:hidden}
+.leaderboard-table th,.leaderboard-table td{padding:10px;text-align:center;border-bottom:1px solid #e7b95733;font-size:14px}
+.leaderboard-table th{background:#e7b957;color:#071d32;font-weight:bold}
+.leaderboard-table tr.current-player{background:rgba(255,229,107,0.25);font-weight:bold;color:#ffe56b}
+.rank-badge{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:50%;font-weight:bold}
+.rank-1{background:#ffd700;color:#000}
+.rank-2{background:#c0c0c0;color:#000}
+.rank-3{background:#cd7f32;color:#fff}
+
 #instructionHint{position:absolute;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(6,36,58,0.75);border:1px solid #e7b957;padding:6px 16px;border-radius:20px;font-size:13px;pointer-events:none;z-index:3}
 </style>
 
@@ -54,6 +68,7 @@ button.action:active{transform:translateY(2px);box-shadow:0 2px 0 #98530c}
       <button class="lang-btn active" id="btnBM" onclick="setLanguage('bm')">BM</button>
       <button class="lang-btn" id="btnEN" onclick="setLanguage('en')">EN</button>
     </div>
+    <div class="hud-card" id="playerCard">👤 <span id="hudNickname">Captain</span></div>
     <div class="hud-card" id="timeCard">⏱️ <span id="time">60</span>s</div>
     <div class="hud-card">⭐ <span id="score">0</span></div>
     <div class="hud-card">🏴‍☠️ <span id="found">0</span>/25</div>
@@ -70,6 +85,10 @@ button.action:active{transform:translateY(2px);box-shadow:0 2px 0 #98530c}
         <strong>Bahasa Melayu:</strong> Kumpul harta karun dengan menyelesaikan latihan tambah wang RM (Sehingga RM10,000) KSSR Matematik Tahun 3!<br><br>
         <strong>English:</strong> Collect treasures by solving Year 3 KSSR Math Ringgit addition problems (Up to RM10,000)!
       </p>
+      
+      <!-- Nickname Input -->
+      <input type="text" id="nicknameInput" class="input-box" placeholder="Masukkan Nama / Enter Nickname" maxlength="12">
+      
       <button class="action" onclick="startGame()" style="width:80%">Mula Gim / Start Game</button>
     </div>
   </div>
@@ -93,12 +112,26 @@ button.action:active{transform:translateY(2px);box-shadow:0 2px 0 #98530c}
     </div>
   </div>
 
-  <!-- Finish Overlay -->
+  <!-- Finish Overlay with Leaderboard -->
   <div id="finishCover" class="overlay" style="display:none;">
     <div class="panel">
-      <h2>🎉 Tahniah / Congratulations!</h2>
+      <h2>🎉 Tamat Permainan / Game Over!</h2>
       <p id="finalStats"></p>
-      <button class="action" onclick="resetGame()">Main Semula / Play Again</button>
+      
+      <h3 style="color:#ffda75;margin:15px 0 5px;">🏆 Kedudukan Carta / Leaderboard Ranking</h3>
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nama / Name</th>
+            <th>Mata / Score</th>
+            <th>Harta / Chests</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+
+      <button class="action" onclick="resetGame()" style="margin-top:20px;">Main Semula / Play Again</button>
     </div>
   </div>
 </div>
@@ -134,6 +167,7 @@ const questions = [
 ];
 
 let currentLang = 'bm';
+let playerNickname = "Captain";
 let score = 0;
 let foundCount = 0;
 let timeLeft = 60;
@@ -141,6 +175,20 @@ let timer = null;
 let activeIndex = -1;
 let isPaused = false;
 let gameStarted = false;
+
+// Default sample leaderboard data
+let leaderboard = [
+  { name: "Ali", score: 1800, found: 18 },
+  { name: "Siti", score: 1400, found: 14 },
+  { name: "Mei Ling", score: 1100, found: 11 },
+  { name: "Ramasamy", score: 800, found: 8 }
+];
+
+// Load leaderboard from localStorage if available
+try {
+  const saved = localStorage.getItem('archipelago_ranks');
+  if (saved) leaderboard = JSON.parse(saved);
+} catch(e){}
 
 // Web Audio API sound generator
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -308,7 +356,6 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
 
-  // Floating Chest Animations
   chests.forEach((c, idx) => {
     if (!c.found) {
       c.mesh.position.y = 1.2 + Math.sin(Date.now() * 0.003 + idx) * 0.2;
@@ -326,6 +373,10 @@ function onWindowResize() {
 }
 
 function startGame() {
+  const nickInput = document.getElementById('nicknameInput').value.trim();
+  playerNickname = nickInput || (currentLang === 'bm' ? "Kapten" : "Captain");
+  document.getElementById('hudNickname').innerText = playerNickname;
+
   score = 0;
   foundCount = 0;
   timeLeft = 60;
@@ -385,7 +436,6 @@ function checkAnswer(selected, correct) {
     document.getElementById('score').innerText = score;
     document.getElementById('found').innerText = foundCount;
     
-    // Hide found 3D chest
     const chestObj = chests.find(c => c.index === activeIndex);
     if (chestObj) {
       chestObj.found = true;
@@ -416,17 +466,44 @@ function endGame() {
   document.getElementById('questionCover').style.display = 'none';
   document.getElementById('finishCover').style.display = 'flex';
   
+  // Save current player score to leaderboard
+  leaderboard.push({ name: playerNickname, score: score, found: foundCount });
+  leaderboard.sort((a,b) => b.score - a.score);
+  leaderboard = leaderboard.slice(0, 5); // Keep top 5
+  
+  try {
+    localStorage.setItem('archipelago_ranks', JSON.stringify(leaderboard));
+  } catch(e){}
+
   const stats = currentLang === 'bm' 
-    ? `Jumlah Mata: <strong>${score}</strong><br>Harta Ditemui: <strong>${foundCount}/25</strong>`
-    : `Total Score: <strong>${score}</strong><br>Treasures Found: <strong>${foundCount}/25</strong>`;
+    ? `Tahniah <strong>${playerNickname}</strong>!<br>Jumlah Mata: <strong>${score}</strong> | Harta Ditemui: <strong>${foundCount}/25</strong>`
+    : `Well done <strong>${playerNickname}</strong>!<br>Total Score: <strong>${score}</strong> | Treasures Found: <strong>${foundCount}/25</strong>`;
   document.getElementById('finalStats').innerHTML = stats;
+
+  // Render Leaderboard Ranking Table
+  const tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = '';
+  leaderboard.forEach((entry, idx) => {
+    const tr = document.createElement('tr');
+    if (entry.name === playerNickname && entry.score === score) {
+      tr.className = 'current-player';
+    }
+    const badgeClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
+    tr.innerHTML = `
+      <td><span class="rank-badge ${badgeClass}">${idx + 1}</span></td>
+      <td>${entry.name}</td>
+      <td>${entry.score}</td>
+      <td>${entry.found}/25</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 function resetGame() {
-  startGame();
+  document.getElementById('startCover').style.display = 'flex';
+  document.getElementById('finishCover').style.display = 'none';
 }
 
-// Initialize 3D on page load
 window.onload = init3D;
 </script>
 </body>
